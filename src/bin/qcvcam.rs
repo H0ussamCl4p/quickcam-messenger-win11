@@ -1,10 +1,4 @@
-//! qcvcam – register/remove the "QuickCam Messenger" virtual camera with Windows 11,
-//! and self-test the capture pipeline.
-//!
-//!   qcvcam test      run camera + NV12 conversion for a few seconds, save captures\vcam_test.png
-//!   qcvcam source    create our media source in-process (COM-free check of the DLL logic)
-//!   qcvcam install   register the virtual camera (admin; use install.ps1)
-//!   qcvcam remove    unregister it (admin; use uninstall.ps1)
+//! qcvcam: install, test and configure the virtual camera.
 
 use std::time::{Duration, Instant};
 
@@ -86,7 +80,6 @@ fn test() -> Result<(), String> {
     let f = last.ok_or("no live frames from the camera")?;
     let f = &f.nv12;
     std::fs::create_dir_all("captures").map_err(|e| e.to_string())?;
-    // Convert NV12 back to RGB for a viewable check of the exact bytes apps will get.
     let mut rgb = vec![0u8; OUT_W * OUT_H * 3];
     let (yp, uv) = f.split_at(OUT_W * OUT_H);
     for y in 0..OUT_H {
@@ -106,7 +99,7 @@ fn test() -> Result<(), String> {
     Ok(())
 }
 
-/// Drives the media source like Frame Server would: Start, request samples, Stop, Shutdown.
+/// Runs the media source in-process the way Frame Server does.
 fn source() -> Result<(), String> {
     com().map_err(|e| e.to_string())?;
     unsafe {
@@ -186,8 +179,7 @@ fn remove() -> Result<(), String> {
     Ok(())
 }
 
-/// Opens the installed virtual camera through the normal Windows camera API (Frame Server),
-/// exactly like an app, and measures fps, duplicate frames, timestamp sanity and latency.
+/// Reads from the installed camera through Frame Server and reports fps, repeats and latency.
 fn live() -> Result<(), String> {
     use windows::core::Interface;
     let secs: u64 = std::env::args().nth(2).and_then(|s| s.parse().ok()).unwrap_or(15);
@@ -278,7 +270,7 @@ fn show_config() -> Result<(), String> {
     Ok(())
 }
 
-/// qcvcam set filter vintage | set mirror off | set strength 0.6  (applies live within ~1 s)
+/// qcvcam set <key> <value>
 fn set() -> Result<(), String> {
     let a: Vec<String> = std::env::args().skip(2).collect();
     let (k, v) = match a.as_slice() {
@@ -291,8 +283,7 @@ fn set() -> Result<(), String> {
     show_config()
 }
 
-/// Grab ~3 s from the camera and render the same frame with every look:
-/// captures/look_none.png, look_vintage.png, look_noir.png (640x480, as apps receive it).
+/// Saves captures/look_*.png, one per filter, from the same frames.
 fn preview() -> Result<(), String> {
     use qccam::isp::{AutoExposure, Filter, Isp, IspParams, NV12_SIZE};
     use qccam::st6422::{self, Controls, FrameAssembler, MODE_LARGE};

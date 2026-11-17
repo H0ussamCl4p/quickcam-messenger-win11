@@ -1,6 +1,4 @@
-//! qccam – Logitech QuickCam Messenger (046d:08f6) support for Windows via WinUSB.
-//! Built as an rlib (used by the qcsnap/qcvcam tools) and as qccam.dll,
-//! the Media Foundation virtual camera source loaded by Windows Frame Server.
+//! QuickCam Messenger (046d:08f6) support for Windows.
 
 pub mod log;
 pub mod winusb;

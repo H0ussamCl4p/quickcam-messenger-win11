@@ -1,5 +1,4 @@
-//! Thin safe-ish wrapper over the WinUSB user-mode API.
-//! The camera must have WinUSB bound as its driver (e.g. via Zadig).
+//! WinUSB wrapper.
 
 use std::ffi::c_void;
 use std::ptr::{null, null_mut};
@@ -12,7 +11,7 @@ use windows_sys::Win32::Storage::FileSystem::*;
 use windows_sys::Win32::System::IO::OVERLAPPED;
 use windows_sys::Win32::System::Threading::{CreateEventW, ResetEvent};
 
-/// GUID_DEVINTERFACE_USB_DEVICE – registered by the USB hub for every device.
+/// GUID_DEVINTERFACE_USB_DEVICE: registered by the USB hub for every device.
 const GUID_DEVINTERFACE_USB_DEVICE: GUID = GUID {
     data1: 0xA5DCBF10,
     data2: 0x6530,
@@ -26,8 +25,8 @@ fn last_err(what: &str) -> String {
     let code = unsafe { GetLastError() };
     let hint = match code {
         2 => " (file not found)",
-        5 => " (access denied – is another program using the camera?)",
-        6 => " (invalid handle – is WinUSB really the camera's driver?)",
+        5 => " (access denied: is another program using the camera?)",
+        6 => " (invalid handle: is WinUSB really the camera's driver?)",
         31 => " (device not functioning)",
         87 => " (invalid parameter)",
         121 => " (timeout)",
@@ -84,7 +83,7 @@ pub fn find_device_path(vid: u16, pid: u16) -> Result<String> {
             }
         }
         SetupDiDestroyDeviceInfoList(set);
-        found.ok_or_else(|| format!("no present USB device with {needle} found – is the camera plugged in?"))
+        found.ok_or_else(|| format!("no present USB device with {needle} found: is the camera plugged in?"))
     }
 }
 
@@ -192,8 +191,7 @@ impl Device {
         Ok(b)
     }
 
-    /// Start an isochronous IN stream. `on_packet` gets each received packet's bytes;
-    /// return `false` from it to stop.
+    /// Isochronous IN stream. Return false from `on_packet` to stop.
     pub fn iso_stream(
         &self,
         pipe: u8,
@@ -236,7 +234,7 @@ impl Device {
                     if !c {
                         break;
                     }
-                    // "continue stream" refused (schedule gap): retry as a fresh ASAP start.
+                    // Schedule gap: retry as a fresh start.
                 }
                 Err(last_err("WinUsb_ReadIsochPipeAsap"))
             };
@@ -255,8 +253,7 @@ impl Device {
                 let mut n = 0u32;
                 stats.transfers += 1;
                 if WinUsb_GetOverlappedResult(self.usb, &ovs[i], &mut n, 1) == 0 {
-                    // A late/missed transfer (e.g. error 87 after a scheduling gap) is not fatal:
-                    // drop its data and restart the ASAP schedule with this transfer.
+                    // Late transfer (e.g. error 87): drop it and restart the schedule.
                     let code = GetLastError();
                     stats.xfer_errors += 1;
                     consecutive_fail += 1;

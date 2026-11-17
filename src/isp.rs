@@ -1,9 +1,4 @@
-//! Image signal processor: raw 324x240 GRBG Bayer -> 640x480 NV12 (and 320x240 RGB),
-//! tuned for low latency (integer math, no per-frame allocations, ~1-3 ms/frame).
-//!
-//! Pipeline: crop 320x240 -> bilinear demosaic -> smoothed gray-world white balance
-//! -> smoothed auto-levels + gamma (one LUT) -> saturation boost -> YUV
-//! -> mild luma sharpen -> 2x luma upscale (chroma is already at NV12 resolution).
+//! Raw Bayer to NV12 processing and auto-exposure.
 
 pub const SRC_W: usize = 324;
 pub const SRC_H: usize = 240;
@@ -12,16 +7,16 @@ pub const H: usize = 240;
 pub const OUT_W: usize = 640;
 pub const OUT_H: usize = 480;
 pub const NV12_SIZE: usize = OUT_W * OUT_H * 3 / 2;
-// The sensor's rightmost columns are unreliable (bright/coloured stripe), so crop from the left.
+// The sensor's rightmost columns are unreliable (bright/colored stripe), so crop from the left.
 const X0: usize = 0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Filter {
-    /// Clean, natural colour.
+    /// No filter.
     None,
-    /// Warm faded film: lifted blacks, creamy highlights, softer colour, vignette, grain.
+    /// Warm faded film.
     Vintage,
-    /// Black & white with punchy contrast, vignette and grain.
+    /// Black and white.
     Noir,
 }
 
@@ -219,9 +214,7 @@ impl Isp {
                 n += 1;
             }
         }
-        // White balance: geometric mean of gray-world and "bright pixels are neutral"
-        // (top ~25% luma, excluding near-clipped). Gray-world alone tints the image when one
-        // coloured surface dominates; bright-pixel alone is noisy. Smoothed over time.
+        // White balance: blend of gray-world and bright-pixel estimates, smoothed.
         if self.p.white_balance {
             let mut lim_lo = 0usize;
             let mut acc = 0u32;
@@ -401,15 +394,13 @@ impl Isp {
                 orow[0] = orow[1];
             }
         }
-        // top row
         let (first, rest) = yplane.split_at_mut(OUT_W);
         first.copy_from_slice(&rest[..OUT_W]);
     }
 }
 
-/// Auto-exposure that protects the frame rate: exposure is capped (default 260 units
-/// ≈ 100 ms = 10 fps) and quantised to 10 ms steps (26 units) against 50 Hz light flicker;
-/// gain covers the rest.
+/// Exposure is capped at 260 (~100 ms, keeps 10 fps) and stepped by 26 (10 ms, 50 Hz
+/// anti-flicker). Gain covers the rest.
 pub struct AutoExposure {
     pub exposure: u16,
     pub gain: u8,

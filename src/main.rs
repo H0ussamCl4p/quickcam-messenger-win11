@@ -1,5 +1,4 @@
-//! qcsnap – grab still pictures from a Logitech QuickCam Messenger (046d:08f6)
-//! on Windows without a vendor driver, using WinUSB from user mode.
+//! qcsnap: device info and still capture.
 
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -9,7 +8,7 @@ use qccam::winusb::{self, Device, Result};
 use qccam::image;
 
 const USAGE: &str = "\
-qcsnap – Logitech QuickCam Messenger (046d:08f6) snapshot tool
+qcsnap: Logitech QuickCam Messenger (046d:08f6) snapshot tool
 
 USAGE:
   qcsnap info                 Show what Windows/WinUSB sees on the camera
@@ -141,7 +140,7 @@ fn snap(args: &[String]) -> Result<()> {
         pipe.id, pipe_kind(pipe.kind), pipe.max_packet, pipe.bytes_per_interval
     );
     if pipe.kind != 1 {
-        return Err("streaming endpoint is not isochronous – unexpected for this camera".into());
+        return Err("streaming endpoint is not isochronous: unexpected for this camera".into());
     }
     let pkt = mode.packet_size.min(pipe.max_packet);
     dev.set_alt(1)?;

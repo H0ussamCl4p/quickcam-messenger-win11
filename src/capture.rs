@@ -1,11 +1,4 @@
-//! Continuous capture shared by every consumer in the process (one camera worker thread).
-//!
-//! Latency choices:
-//! * 8 isochronous packets per transfer (8 ms granularity) with 8 transfers in flight.
-//! * Exposure capped by `AutoExposure` so the sensor holds its 10 fps maximum.
-//! * ISP runs in ~2 ms on the capture thread; frames carry their capture timestamp.
-//! * The camera stays warm for `LINGER` after the last consumer leaves, because Frame
-//!   Server opens/closes sources repeatedly; a re-open then costs nothing.
+//! Capture thread shared by all consumers in the process.
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -47,7 +40,7 @@ pub struct Hub {
     thread: Mutex<Option<JoinHandle<()>>>,
 }
 
-/// Lock that survives a poisoned mutex (a panic must never cascade into Frame Server).
+/// Poison-tolerant lock, so a panic never spreads into Frame Server.
 pub fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
@@ -218,7 +211,7 @@ fn run_camera(hub: &Hub, ae: &mut AutoExposure, isp: &mut Isp) -> Result<(), Str
     Ok(())
 }
 
-/// Dark blue frame with a sliding bar: "virtual camera alive, physical camera not delivering".
+/// Shown while the camera isn't delivering.
 pub fn placeholder(n: u64) -> Frame {
     let mut f = vec![0u8; NV12_SIZE];
     let (yp, uv) = f.split_at_mut(OUT_W * OUT_H);

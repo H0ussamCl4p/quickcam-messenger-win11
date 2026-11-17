@@ -1,4 +1,4 @@
-//! Bayer (GRBG) to RGB conversion and PNG output.
+//! Simple demosaic and PNG output.
 
 use std::fs::File;
 use std::io::BufWriter;
@@ -14,8 +14,8 @@ fn grbg(x: usize, y: usize) -> usize {
     }
 }
 
-/// Simple demosaic: each output channel is the mean of that colour's samples in the 3x3 neighbourhood.
-/// Then a gray-world white balance so the old sensor's colour cast is less extreme.
+/// Simple demosaic: each output channel is the mean of that color's samples in the 3x3 neighbourhood.
+/// Then a gray-world white balance so the old sensor's color cast is less extreme.
 pub fn debayer_grbg(raw: &[u8], w: usize, h: usize, white_balance: bool) -> Vec<u8> {
     let mut rgb = vec![0f32; w * h * 3];
     for y in 0..h {

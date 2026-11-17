@@ -1,5 +1,4 @@
-//! ST6422 bridge protocol (Logitech QuickCam Messenger / Communicate),
-//! ported from the Linux gspca stv06xx driver.
+//! ST6422 protocol, ported from Linux gspca/stv06xx.
 
 use crate::winusb::{Device, Result};
 

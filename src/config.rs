@@ -1,6 +1,4 @@
-//! User settings shared by the virtual camera (inside Frame Server) and the tools:
-//! C:\ProgramData\QCVCam\config.txt, simple `key = value` lines. The camera re-reads it
-//! about once a second, so changes apply live without reinstalling or restarting apps.
+//! Settings file, re-read by the camera about once a second.
 
 use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime};

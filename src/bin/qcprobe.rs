@@ -1,5 +1,4 @@
-//! qcprobe – quick experiments: fps/brightness with an extra register write or a gain value.
-//! usage: qcprobe <expo> <gain> [reg=val ...]
+//! qcprobe: register experiments.
 use std::time::{Duration, Instant};
 use qccam::st6422::{self, Controls, FrameAssembler, MODE_LARGE};
 use qccam::winusb::{self, Device};

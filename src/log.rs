@@ -1,5 +1,4 @@
-//! Tiny append-only logger. Inside Frame Server there is no console, so the
-//! virtual camera writes to C:\ProgramData\QCVCam\log.txt (created by install.ps1).
+//! File logger (Frame Server has no console).
 
 use std::io::Write;
 use std::sync::Mutex;

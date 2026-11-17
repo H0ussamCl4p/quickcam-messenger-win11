@@ -1,6 +1,4 @@
-//! qcbench – measure what limits frame rate and latency.
-//! For each (packet size, exposure) it reports fps, SOF->EOF readout time,
-//! and how late the frame reaches us after its last packet. Also times conversion.
+//! qcbench: frame rate and latency measurements.
 
 use std::time::{Duration, Instant};
 

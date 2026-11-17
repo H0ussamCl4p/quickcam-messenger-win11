@@ -1,13 +1,4 @@
-//! Media Foundation "software camera source" for the Windows 11 virtual camera API.
-//!
-//! Object graph (as Frame Server sees it):
-//!   CLSID  --DllGetClassObject-->  Factory (IClassFactory)
-//!          --CreateInstance-->     Activate (IMFActivate)
-//!          --ActivateObject-->     Source (IMFMediaSourceEx, IKsControl, IMFGetService)
-//!                                    └─ Stream (IMFMediaStream2, IKsControl): NV12 640x480
-//!
-//! Samples are delivered from a per-stream worker thread that pairs each
-//! RequestSample token with the newest frame from `capture::hub()`.
+//! Media Foundation source for the Windows 11 virtual camera.
 
 #![allow(non_snake_case)]
 
@@ -35,12 +26,10 @@ fn not_found() -> Error {
     Error::from(HRESULT::from_win32(ERROR_SET_NOT_FOUND.0))
 }
 
-/// Wrapper to move COM pointers into our worker thread (MF objects here are free-threaded).
+/// Lets COM pointers cross threads (these MF objects are free-threaded).
 struct SendBox<T>(T);
 unsafe impl<T> Send for SendBox<T> {}
 unsafe impl<T> Sync for SendBox<T> {}
-
-// ───────────────────────────── media type helpers ─────────────────────────────
 
 fn media_type() -> Result<IMFMediaType> {
     unsafe {
@@ -85,15 +74,13 @@ fn make_sample(frame: &Frame, time: i64) -> Result<IMFSample> {
         buf.SetCurrentLength(NV12_SIZE as u32)?;
         let s = MFCreateSample()?;
         s.AddBuffer(&buf)?;
-        // Capture time (not delivery time): correct A/V sync and pacing when recording.
+        // Capture time, for A/V sync.
         s.SetSampleTime(time)?;
         s.SetSampleDuration(10_000_000 / FPS as i64)?;
         s.SetUINT32(&MFSampleExtension_CleanPoint, 1)?;
         Ok(s)
     }
 }
-
-// ───────────────────────────────── stream ─────────────────────────────────
 
 struct StreamState {
     state: MF_STREAM_STATE,
@@ -191,7 +178,7 @@ impl Stream {
     }
 }
 
-/// Worker: for every pending RequestSample token, wait for a fresh frame and deliver it.
+/// Pairs each RequestSample token with the next frame.
 fn deliver(sh: Arc<StreamShared>, queue: SendBox<IMFMediaEventQueue>) {
     let hub = capture::hub();
     let mut last_seq = 0u64;
@@ -210,9 +197,7 @@ fn deliver(sh: Arc<StreamShared>, queue: SendBox<IMFMediaEventQueue>) {
                 st = sh.cv.wait(st).unwrap_or_else(|e| e.into_inner());
             }
         };
-        // Hand over a frame the moment it is published. If none arrives in time
-        // (sensor runs at 10 fps = 100 ms), repeat the last one so apps never stall.
-        // The very first sample may wait longer so apps don't flash the placeholder.
+        // Repeat the last frame after 180 ms. The first sample may wait up to 1.5 s.
         let wait = if last_seq == 0 { 1500 } else { 180 };
         let (frame, seq) = hub.wait_frame(last_seq, Duration::from_millis(wait));
         let time = if seq != last_seq { frame.time } else { capture::now_100ns() };
@@ -307,8 +292,6 @@ impl IKsControl_Impl for Stream_Impl {
         Err(not_found())
     }
 }
-
-// ───────────────────────────────── source ─────────────────────────────────
 
 struct SourceState {
     stream: Option<ComObject<Stream>>,
@@ -462,8 +445,6 @@ impl IKsControl_Impl for Source_Impl {
     }
 }
 
-// ──────────────────────────────── activate ────────────────────────────────
-
 #[implement(IMFActivate)]
 pub struct Activate {
     attrs: IMFAttributes,
@@ -599,8 +580,6 @@ impl IMFAttributes_Impl for Activate_Impl {
         unsafe { self.attrs.CopyAllItems(d) }
     }
 }
-
-// ─────────────────────────── class factory + exports ───────────────────────────
 
 #[implement(IClassFactory)]
 struct Factory;
