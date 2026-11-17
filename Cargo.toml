@@ -1,0 +1,55 @@
+[package]
+name = "qccam"
+version = "0.1.0"
+edition = "2021"
+description = "Windows 10/11 support for the Logitech QuickCam Messenger (046d:08f6, ST6422): WinUSB user-mode driver + Media Foundation virtual camera"
+license = "GPL-2.0-or-later"
+repository = "https://github.com/H0ussamCl4p/quickcam-messenger-win11"
+keywords = ["webcam", "winusb", "media-foundation", "virtual-camera", "quickcam"]
+
+[dependencies]
+png = "0.17"
+
+[dependencies.windows-sys]
+version = "0.59"
+features = [
+    "Win32_Foundation",
+    "Win32_Devices_Usb",
+    "Win32_Devices_DeviceAndDriverInstallation",
+    "Win32_Storage_FileSystem",
+    "Win32_System_IO",
+    "Win32_System_Threading",
+    "Win32_Security",
+]
+
+[lib]
+name = "qccam"
+path = "src/lib.rs"
+crate-type = ["rlib", "cdylib"]
+
+[[bin]]
+name = "qcsnap"
+path = "src/main.rs"
+
+[[bin]]
+name = "qcvcam"
+path = "src/bin/qcvcam.rs"
+
+[dependencies.windows]
+version = "0.58"
+features = [
+    "implement",
+    "Win32_Foundation",
+    "Win32_Media_MediaFoundation",
+    "Win32_Media_KernelStreaming",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_Variant",
+    "Win32_System_Registry",
+    "Win32_System_LibraryLoader",
+    "Win32_System_SystemServices",
+    "Win32_System_Diagnostics_Debug",
+]
+
+[dependencies.windows-core]
+version = "0.58"
